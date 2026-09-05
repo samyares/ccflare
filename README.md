@@ -6,6 +6,55 @@ ccflare routes each provider by URL prefix, load-balances across multiple accoun
 
 ![ccflare Dashboard](apps/lander/src/screenshot-dashboard.png)
 
+## About this fork
+
+This is [samyares/ccflare](https://github.com/samyares/ccflare), a fork of
+[snipeship/ccflare](https://github.com/snipeship/ccflare) used to share one Claude subscription
+between a few people with per-person keys and usage tracking. Everything upstream documents below
+still applies. What is different:
+
+### Patches to ccflare itself
+
+| File | Change | Why |
+|---|---|---|
+| `packages/proxy/src/compat/transforms/requests/claude-code.ts` | `CLAUDE_CODE_VERSION` 2.1.63 → 2.1.251 | Anthropic rejects requests that claim an old Claude Code version for newer models (e.g. `claude-fable-5-1`: "version 2.1.251 or newer is required"). |
+| `packages/proxy/src/compat/handler.ts` | client `anthropic-beta` values are **merged** with ccflare's fixed list instead of replaced | Claude Code sends `context_management`, which fails with `400 Extra inputs are not permitted` unless its beta header reaches Anthropic. |
+
+Known upstream quirks worked around in keygate rather than patched here: the compat routes require
+`anthropic/<model>` prefixes; upstream `Content-Encoding` headers are forwarded although the body is already
+decoded; a `429` with a far-future `anthropic-ratelimit-unified-reset` (e.g. "usage credits are required for long
+context") benches the account until that date.
+
+### keygate (new, in [`keygate/`](keygate/))
+
+A small Bun service in front of ccflare that adds per-user API keys, per-user usage and cost reporting,
+Anthropic plan-limit meters, user management, and a password-protected pass-through to the ccflare
+dashboard. See [`keygate/README.md`](keygate/README.md) for design, endpoints and install, and
+[`keygate/USAGE-GUIDE.md`](keygate/USAGE-GUIDE.md) for the guide handed to end users.
+
+```
+client (Claude Code / SDK / IDE)  --key-->  keygate :4000  -->  ccflare :8080  -->  Anthropic
+                                            keygate :8081  (basic auth)  -->  ccflare dashboard
+```
+
+### Deployment notes (Ubuntu, systemd)
+
+- Units for both services are in `keygate/ccflare.service` and `keygate/keygate.service`.
+- **Run `bun run build` before the first start and after every pull.** The server embeds the web dashboard
+  and exits with `Cannot find module '@ccflare/web/manifest.json'` if it has not been built.
+- Recommended firewall: allow 22, 4000, 8081; block 8080 (the ccflare dashboard and management API have no auth).
+- ccflare persists to `~/.config/ccflare/ccflare.db` (SQLite, full request payloads). Account rate-limit state lives
+  in the `accounts` table; if an account is wrongly benched, clear `rate_limited_until` while ccflare is stopped.
+- Do not run LiteLLM or other heavy containers next to this on a 1 GB VM; it has locked the box before. Add swap.
+
+### Keeping up with upstream
+
+```bash
+git fetch upstream            # upstream = https://github.com/snipeship/ccflare
+git merge upstream/main       # the two patched files above may conflict; keep the fork's lines
+bun install && bun run build && systemctl restart ccflare
+```
+
 ## Why ccflare?
 
 - **Native passthrough** — Anthropic stays Anthropic, OpenAI stays OpenAI
@@ -21,6 +70,7 @@ ccflare routes each provider by URL prefix, load-balances across multiple accoun
 git clone https://github.com/snipeship/ccflare
 cd ccflare
 bun install
+bun run build   # builds the embedded dashboard; required before `bun run start`
 
 # Start the server + dashboard on http://localhost:8080
 bun run start
