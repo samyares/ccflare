@@ -18,3 +18,8 @@ skills-lock.json
 
 .claude/skills/
 git-crypt-key
+
+# keygate runtime files (secrets / state)
+keygate/keys.json
+keygate/.env
+keygate/limits.json

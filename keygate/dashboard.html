@@ -1,0 +1,307 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Usage Dashboard</title>
+<style>
+  :root {
+    color-scheme: light;
+    --page: #f9f9f7; --surface: #fcfcfb; --ink: #0b0b0b; --ink2: #52514e; --muted: #898781;
+    --grid: #e1e0d9; --axis: #c3c2b7; --border: rgba(11,11,11,0.10);
+    --s1: #2a78d6; --s2: #eb6834; --s3: #1baf7a; --s4: #eda100; --s5: #e87ba4; --s6: #008300; --s7: #4a3aa7; --s8: #e34948;
+    --other: #898781;
+  }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --page: #0d0d0d; --surface: #1a1a19; --ink: #ffffff; --ink2: #c3c2b7; --muted: #898781;
+    --grid: #2c2c2a; --axis: #383835; --border: rgba(255,255,255,0.10);
+    --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500; --s5: #d55181; --s6: #008300; --s7: #9085e9; --s8: #e66767;
+  }}
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--page); color: var(--ink); font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  .wrap { max-width: 1100px; margin: 0 auto; padding: 24px 20px 48px; }
+  header { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+  h1 { font-size: 20px; margin: 0; font-weight: 600; }
+  .sub { color: var(--ink2); font-size: 13px; }
+  .filters { display: flex; gap: 6px; flex-wrap: wrap; }
+  .filters button { background: var(--surface); color: var(--ink2); border: 1px solid var(--border); border-radius: 8px; padding: 6px 12px; cursor: pointer; font: inherit; }
+  .filters button[aria-pressed="true"] { color: var(--ink); border-color: var(--ink); font-weight: 600; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 16px 18px; }
+  .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin-bottom: 16px; }
+  .tile .who { display: flex; align-items: center; gap: 8px; font-weight: 600; margin-bottom: 8px; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; flex: none; }
+  .tile .big { font-size: 28px; font-weight: 600; line-height: 1.1; }
+  .tile .row { display: flex; justify-content: space-between; color: var(--ink2); font-size: 13px; margin-top: 6px; font-variant-numeric: tabular-nums; }
+  .tile .row b { color: var(--ink); font-weight: 500; }
+  .grid2 { display: grid; grid-template-columns: 1fr; gap: 16px; }
+  @media (min-width: 900px) { .grid2 { grid-template-columns: 3fr 2fr; } }
+  h2 { font-size: 14px; font-weight: 600; margin: 0 0 4px; }
+  .hint { color: var(--muted); font-size: 12px; margin-bottom: 10px; }
+  .legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12px; color: var(--ink2); margin-bottom: 8px; }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .chart { position: relative; width: 100%; overflow-x: auto; }
+  svg { display: block; width: 100%; height: auto; }
+  .bar { transition: opacity .15s; }
+  .tip { position: absolute; pointer-events: none; background: var(--ink); color: var(--page); padding: 6px 9px; border-radius: 6px; font-size: 12px; white-space: nowrap; opacity: 0; transform: translate(-50%, -110%); font-variant-numeric: tabular-nums; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { text-align: left; padding: 7px 8px; border-bottom: 1px solid var(--grid); }
+  th { color: var(--muted); font-weight: 500; font-size: 12px; }
+  td.n, th.n { text-align: right; font-variant-numeric: tabular-nums; }
+  .tblwrap { overflow-x: auto; margin-top: 16px; }
+  .hbar { height: 6px; border-radius: 3px; background: var(--grid); overflow: hidden; margin-top: 4px; }
+  .hbar i { display: block; height: 100%; border-radius: 3px; }
+  .meters { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px 24px; }
+  .meter .lbl { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 6px; }
+  .meter .lbl b { font-weight: 600; }
+  .meter .lbl span { color: var(--ink2); }
+  .meter .track { height: 8px; border-radius: 4px; background: var(--grid); overflow: hidden; }
+  .meter .fill { height: 100%; border-radius: 4px; background: var(--s1); }
+  .meter .fill.warn { background: #fab219; } .meter .fill.crit { background: #d03b3b; }
+  .meter .sub { color: var(--muted); font-size: 12px; margin-top: 5px; }
+  .btn { font: inherit; font-size: 12px; padding: 5px 10px; border-radius: 7px; border: 1px solid var(--border); background: var(--surface); color: var(--ink); cursor: pointer; }
+  .btn:hover { border-color: var(--ink2); }
+  .btn.primary { background: var(--ink); color: var(--page); border-color: var(--ink); }
+  .btn.danger { color: #d03b3b; }
+  .key { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; color: var(--ink2); }
+  .badge { display: inline-block; font-size: 11px; padding: 2px 8px; border-radius: 10px; border: 1px solid var(--border); color: var(--ink2); }
+  .badge.off { color: #d03b3b; border-color: #d03b3b; }
+  td .actions { display: flex; gap: 6px; justify-content: flex-end; flex-wrap: wrap; }
+  #login { max-width: 420px; margin: 80px auto; }
+  #login input { width: 100%; padding: 10px; font: inherit; border: 1px solid var(--border); border-radius: 8px; background: var(--page); color: var(--ink); margin: 10px 0; }
+  #login button { padding: 9px 16px; font: inherit; border-radius: 8px; border: 0; background: var(--ink); color: var(--page); cursor: pointer; }
+  .err { color: #d03b3b; font-size: 13px; }
+  .empty { color: var(--muted); padding: 30px; text-align: center; }
+  .logout { background: none; border: 0; color: var(--muted); cursor: pointer; font: inherit; font-size: 12px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div id="login" class="card" hidden>
+    <h1>Usage Dashboard</h1>
+    <p class="sub">Enter the admin key to view per-user usage.</p>
+    <input id="key" type="password" placeholder="sk-admin-…" autocomplete="off">
+    <div id="loginerr" class="err"></div>
+    <button id="go">Open</button>
+  </div>
+
+  <div id="app" hidden>
+    <header>
+      <div>
+        <h1>Usage by user</h1>
+        <div class="sub" id="range"></div>
+      </div>
+      <div class="filters" id="filters" role="group" aria-label="Date range">
+        <button data-days="1">Today</button>
+        <button data-days="7">7 days</button>
+        <button data-days="30" aria-pressed="true">30 days</button>
+        <button data-days="90">90 days</button>
+        <button class="logout" id="logout" title="Forget admin key">Sign out</button>
+      </div>
+    </header>
+
+    <div class="card" id="limitsCard" style="margin-bottom:16px">
+      <h2>Shared plan limits</h2>
+      <div class="hint" id="limitsHint">Reported by Anthropic on the last request through the proxy.</div>
+      <div class="meters" id="meters"></div>
+    </div>
+
+    <div class="tiles" id="tiles"></div>
+
+    <div class="grid2">
+      <div class="card">
+        <h2>Daily cost (USD)</h2>
+        <div class="hint">Stacked per day. Hover a segment for details.</div>
+        <div class="legend" id="legend"></div>
+        <div class="chart"><svg id="daily" role="img" aria-label="Daily cost per user"></svg><div class="tip" id="tip"></div></div>
+      </div>
+      <div class="card">
+        <h2>Requests by model</h2>
+        <div class="hint">Share of requests each user sent to each model.</div>
+        <div id="models"></div>
+      </div>
+    </div>
+
+    <div class="card tblwrap" id="usersCard">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
+        <div><h2>Users & keys</h2><div class="hint" style="margin:0">Each person gets one key. Disabling a key blocks requests immediately; deleting removes the key but keeps usage history.</div></div>
+        <form id="addUser" style="display:flex;gap:6px"><input id="newName" placeholder="new user name" pattern="[A-Za-z0-9][A-Za-z0-9._-]{0,39}" required style="padding:7px 10px;font:inherit;border:1px solid var(--border);border-radius:8px;background:var(--page);color:var(--ink)"><button class="btn primary">Add user</button></form>
+      </div>
+      <div id="usersMsg" class="err" style="min-height:18px;margin-top:6px"></div>
+      <table id="users"><thead><tr><th>User</th><th>Key</th><th>Status</th><th>Created</th><th></th></tr></thead><tbody></tbody></table>
+    </div>
+
+    <div class="card tblwrap">
+      <h2>Details</h2>
+      <table id="table">
+        <thead><tr><th>User</th><th class="n">Requests</th><th class="n">Errors</th><th class="n">Input tokens</th><th class="n">Output tokens</th><th class="n">Cache read</th><th class="n">Cost (USD)</th><th>Last used</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+  const $ = (s) => document.querySelector(s);
+  const SLOTS = ["--s1","--s2","--s3","--s4","--s5","--s6","--s7","--s8"];
+  const css = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+  let key = null, days = 30, data = null, colorOf = new Map();
+  try { key = localStorage.getItem("keygate_admin"); } catch {}
+
+  const fmtUsd = (n) => "$" + (n ?? 0).toFixed(n >= 100 ? 0 : n >= 10 ? 2 : 4);
+  const fmtInt = (n) => (n ?? 0).toLocaleString("en-US");
+  const fmtK = (n) => n >= 1e6 ? (n/1e6).toFixed(1)+"M" : n >= 1e3 ? (n/1e3).toFixed(1)+"k" : String(n);
+  const ago = (iso) => { if (!iso) return "never"; const m = (Date.now() - new Date(iso)) / 60000; return m < 1 ? "just now" : m < 60 ? Math.round(m)+" min ago" : m < 1440 ? Math.round(m/60)+" h ago" : Math.round(m/1440)+" d ago"; };
+
+  function showLogin(msg) { $("#login").hidden = false; $("#app").hidden = true; $("#loginerr").textContent = msg || ""; }
+  $("#go").onclick = () => { key = $("#key").value.trim(); if (!key) return; try { localStorage.setItem("keygate_admin", key); } catch {} load(); };
+  $("#key").addEventListener("keydown", (e) => { if (e.key === "Enter") $("#go").click(); });
+  $("#logout").onclick = () => { try { localStorage.removeItem("keygate_admin"); } catch {} key = null; showLogin(); };
+  $("#filters").addEventListener("click", (e) => { const b = e.target.closest("button[data-days]"); if (!b) return; days = +b.dataset.days; [...$("#filters").querySelectorAll("[data-days]")].forEach(x => x.setAttribute("aria-pressed", x === b)); load(); });
+
+  // ---- user management ----
+  const api = (path, opts = {}) => fetch(path, { ...opts, headers: { Authorization: "Bearer " + key, "content-type": "application/json", ...(opts.headers || {}) } });
+  const revealed = new Set();
+  async function loadUsers() {
+    const res = await api("/admin/users"); if (!res.ok) return;
+    const users = await res.json();
+    $("#users tbody").innerHTML = users.map(u => `<tr data-key="${esc(u.key)}">
+      <td><b>${esc(u.name)}</b></td>
+      <td class="key">${revealed.has(u.key) ? esc(u.key) : esc(u.key.slice(0, 8)) + "••••••••••••" }</td>
+      <td><span class="badge ${u.disabled ? "off" : ""}">${u.disabled ? "disabled" : "active"}</span></td>
+      <td style="color:var(--ink2)">${u.created ? new Date(u.created).toLocaleDateString("en-GB") : "—"}</td>
+      <td><div class="actions">
+        <button class="btn" data-act="reveal">${revealed.has(u.key) ? "Hide" : "Show"}</button>
+        <button class="btn" data-act="copy">Copy</button>
+        <button class="btn" data-act="rename">Rename</button>
+        <button class="btn" data-act="toggle">${u.disabled ? "Enable" : "Disable"}</button>
+        <button class="btn danger" data-act="delete">Delete</button>
+      </div></td></tr>`).join("") || `<tr><td colspan="5" class="empty">No users yet.</td></tr>`;
+  }
+  const msg = (t, ok) => { const el = $("#usersMsg"); el.textContent = t || ""; el.style.color = ok ? "var(--ink2)" : "#d03b3b"; };
+  $("#addUser").onsubmit = async (e) => { e.preventDefault(); const name = $("#newName").value.trim(); if (!name) return;
+    const res = await api("/admin/users", { method: "POST", body: JSON.stringify({ name }) }); const j = await res.json();
+    if (!res.ok) return msg(j.error); $("#newName").value = ""; revealed.add(j.key); msg(`Created "${j.name}". Key: ${j.key}`, true); loadUsers(); };
+  $("#users").addEventListener("click", async (e) => { const b = e.target.closest("button[data-act]"); if (!b) return; const tr = b.closest("tr"); const k = tr.dataset.key; const name = tr.querySelector("b").textContent; const act = b.dataset.act;
+    if (act === "reveal") { revealed.has(k) ? revealed.delete(k) : revealed.add(k); return loadUsers(); }
+    if (act === "copy") { try { await navigator.clipboard.writeText(k); msg(`Key for ${name} copied.`, true); } catch { revealed.add(k); loadUsers(); msg("Clipboard blocked; key shown instead."); } return; }
+    if (act === "toggle") { const disabled = b.textContent === "Disable"; const res = await api(`/admin/users/${encodeURIComponent(k)}`, { method: "PATCH", body: JSON.stringify({ disabled }) }); if (!res.ok) return msg((await res.json()).error); msg(`${name} ${disabled ? "disabled" : "enabled"}.`, true); return loadUsers(); }
+    if (act === "rename") { const nn = prompt(`New name for ${name}:`, name); if (!nn || nn.trim() === name) return; const res = await api(`/admin/users/${encodeURIComponent(k)}`, { method: "PATCH", body: JSON.stringify({ name: nn.trim() }) }); const j = await res.json(); if (!res.ok) return msg(j.error); msg(`Renamed ${name} → ${j.name}; history moved.`, true); loadUsers(); return load(); }
+    if (act === "delete") { if (!confirm(`Delete the key for ${name}? Their requests will stop working. Usage history is kept.`)) return; const res = await api(`/admin/users/${encodeURIComponent(k)}`, { method: "DELETE" }); if (!res.ok) return msg((await res.json()).error); msg(`Deleted ${name}.`, true); return loadUsers(); }
+  });
+
+  async function load() {
+    if (!key) return showLogin();
+    let res;
+    try { res = await fetch(`/usage?days=${days}`, { headers: { Authorization: "Bearer " + key } }); } catch { return showLogin("Could not reach the server."); }
+    if (res.status === 401) return showLogin("Wrong admin key.");
+    data = await res.json();
+    $("#login").hidden = true; $("#app").hidden = false;
+    render();
+    loadUsers();
+  }
+
+  function render() {
+    // Fixed color per user, assigned by first appearance and never re-ordered.
+    const users = data.totals.map(t => t.user);
+    for (const u of users) if (!colorOf.has(u)) colorOf.set(u, colorOf.size < 8 ? SLOTS[colorOf.size] : "--other");
+    const col = (u) => css(colorOf.get(u) || "--other");
+    const since = new Date(data.since);
+    $("#range").textContent = `Since ${since.toLocaleDateString("en-GB", { day: "numeric", month: "short" })} · ${data.totals.length} user${data.totals.length === 1 ? "" : "s"} · total ${fmtUsd(data.totals.reduce((a, t) => a + t.cost_usd, 0))}`;
+
+    renderLimits();
+
+    // Tiles
+    $("#tiles").innerHTML = data.totals.map(t => `
+      <div class="card tile">
+        <div class="who"><span class="dot" style="background:${col(t.user)}"></span>${esc(t.user)}</div>
+        <div class="big">${fmtUsd(t.cost_usd)}</div>
+        <div class="row"><span>Requests</span><b>${fmtInt(t.requests)}</b></div>
+        <div class="row"><span>Tokens in / out</span><b>${fmtK(t.input_tokens)} / ${fmtK(t.output_tokens)}</b></div>
+        <div class="row"><span>Last used</span><b>${ago(t.last_used)}</b></div>
+      </div>`).join("") || `<div class="card empty">No requests in this period.</div>`;
+
+    // Legend (always present for >= 2 series)
+    $("#legend").innerHTML = users.length >= 2 ? users.map(u => `<span><i class="dot" style="background:${col(u)}"></i>${esc(u)}</span>`).join("") : "";
+
+    renderDaily(users, col);
+    renderModels(users, col);
+
+    // Table
+    $("#table tbody").innerHTML = data.totals.map(t => `<tr>
+      <td><span class="dot" style="background:${col(t.user)};display:inline-block;vertical-align:middle;margin-right:6px"></span>${esc(t.user)}</td>
+      <td class="n">${fmtInt(t.requests)}</td><td class="n">${fmtInt(t.requests - t.ok)}</td>
+      <td class="n">${fmtInt(t.input_tokens)}</td><td class="n">${fmtInt(t.output_tokens)}</td><td class="n">${fmtInt(t.cache_read_tokens)}</td>
+      <td class="n">${fmtUsd(t.cost_usd)}</td><td>${t.last_used ? new Date(t.last_used).toLocaleString("en-GB") : "—"}</td></tr>`).join("");
+  }
+
+  function renderLimits() {
+    const L = data.limits || {};
+    const defs = [["session5h", "Current session (5 h)"], ["weekly", "Weekly · all models"], ["weeklyOpusFable", "Weekly · Opus & Fable"]];
+    const untilText = (ms) => { if (!ms) return ""; const m = Math.max(0, Math.round((ms - Date.now()) / 60000)); const h = Math.floor(m / 60), d = Math.floor(h / 24); return d >= 1 ? `resets in ${d} d ${h % 24} h` : h >= 1 ? `resets in ${h} h ${m % 60} min` : `resets in ${m} min`; };
+    const rows = defs.filter(([k]) => L[k]);
+    $("#meters").innerHTML = rows.length ? rows.map(([k, label]) => { const w = L[k]; const pct = Math.min(100, Math.round(w.utilization * 100)); const cls = pct >= 90 ? "crit" : pct >= 75 ? "warn" : ""; const flag = pct >= 90 ? " ⚠ near limit" : pct >= 75 ? " · high" : "";
+      return `<div class="meter"><div class="lbl"><b>${label}</b><span>${pct}% used${flag}</span></div><div class="track"><div class="fill ${cls}" style="width:${pct}%"></div></div><div class="sub">${untilText(w.reset)}${w.status && w.status !== "allowed" ? ` · status: ${esc(w.status)}` : ""}</div></div>`; }).join("")
+      : `<div class="empty">No limit data yet. It appears after the first request goes through.</div>`;
+    $("#limitsHint").textContent = L.updatedAt ? `Reported by Anthropic on the last request through the proxy · updated ${ago(L.updatedAt)}.` : "Reported by Anthropic on the last request through the proxy.";
+  }
+
+  function renderDaily(users, col) {
+    const svg = $("#daily"), tip = $("#tip");
+    // Build day list covering the whole range so empty days show as gaps
+    const dayList = []; const d0 = new Date(data.since); d0.setUTCHours(0,0,0,0);
+    for (let d = new Date(d0); d <= new Date(); d.setUTCDate(d.getUTCDate() + 1)) dayList.push(d.toISOString().slice(0, 10));
+    const byDay = new Map(dayList.map(d => [d, new Map()]));
+    for (const r of data.daily) byDay.get(r.day)?.set(r.user, r.cost_usd);
+    const W = 640, H = 240, padL = 44, padR = 8, padT = 10, padB = 28;
+    const iw = W - padL - padR, ih = H - padT - padB;
+    const max = Math.max(0.0001, ...dayList.map(d => [...byDay.get(d).values()].reduce((a, b) => a + b, 0)));
+    const niceMax = niceCeil(max);
+    const y = (v) => padT + ih - (v / niceMax) * ih;
+    const n = dayList.length, slot = iw / n, bw = Math.max(3, Math.min(28, slot * 0.7));
+    let out = "";
+    // gridlines + y labels
+    for (let i = 0; i <= 4; i++) { const v = niceMax * i / 4, yy = y(v); out += `<line x1="${padL}" x2="${W - padR}" y1="${yy}" y2="${yy}" stroke="${i === 0 ? css("--axis") : css("--grid")}" stroke-width="1"/><text x="${padL - 6}" y="${yy + 4}" text-anchor="end" font-size="10" fill="${css("--muted")}">${fmtUsd(v)}</text>`; }
+    // bars
+    dayList.forEach((day, i) => {
+      const x = padL + slot * i + (slot - bw) / 2; let acc = 0; const segs = [...byDay.get(day)].filter(([, v]) => v > 0);
+      segs.forEach(([u, v], k) => {
+        const y1 = y(acc + v), y0 = y(acc); const h = Math.max(0, y0 - y1 - (k < segs.length - 1 ? 2 : 0)); const top = k === segs.length - 1;
+        out += `<path class="bar" data-day="${day}" data-user="${esc(u)}" data-v="${v}" d="${top ? roundedTop(x, y1, bw, h, 4) : `M${x},${y1}h${bw}v${h}h${-bw}z`}" fill="${col(u)}"/>`; acc += v;
+      });
+      // x labels: at most ~8
+      const every = Math.ceil(n / 8);
+      if (i % every === 0 || i === n - 1) out += `<text x="${x + bw / 2}" y="${H - 8}" text-anchor="middle" font-size="10" fill="${css("--muted")}">${day.slice(5).replace("-", "/")}</text>`;
+    });
+    svg.setAttribute("viewBox", `0 0 ${W} ${H}`); svg.innerHTML = out;
+    svg.onmousemove = (e) => { const b = e.target.closest(".bar"); if (!b) { tip.style.opacity = 0; return; }
+      const r = b.getBoundingClientRect(), p = svg.parentElement.getBoundingClientRect();
+      tip.textContent = `${b.dataset.day} · ${b.dataset.user} · ${fmtUsd(+b.dataset.v)}`; tip.style.left = (r.left + r.width / 2 - p.left) + "px"; tip.style.top = (r.top - p.top) + "px"; tip.style.opacity = 1; };
+    svg.onmouseleave = () => { tip.style.opacity = 0; };
+  }
+
+  function renderModels(users, col) {
+    const rows = data.by_model || [];
+    if (!rows.length) { $("#models").innerHTML = `<div class="empty">No data.</div>`; return; }
+    const models = [...new Set(rows.map(r => r.model))];
+    const max = Math.max(...rows.map(r => r.requests));
+    $("#models").innerHTML = models.map(m => {
+      const rs = rows.filter(r => r.model === m);
+      return `<div style="margin-bottom:12px"><div style="font-size:12px;color:var(--ink2);margin-bottom:2px">${esc(m)}</div>` + rs.map(r => `
+        <div style="display:flex;align-items:center;gap:8px;font-size:12px"><span class="dot" style="background:${col(r.user)}"></span><span style="width:64px;overflow:hidden;text-overflow:ellipsis">${esc(r.user)}</span>
+          <div class="hbar" style="flex:1;margin:0"><i style="width:${(r.requests / max * 100).toFixed(1)}%;background:${col(r.user)}"></i></div>
+          <b style="width:72px;text-align:right;font-variant-numeric:tabular-nums;font-weight:500">${fmtInt(r.requests)} · ${fmtUsd(r.cost_usd)}</b></div>`).join("") + `</div>`;
+    }).join("");
+  }
+
+  function roundedTop(x, y, w, h, r) { r = Math.min(r, h, w / 2); return `M${x},${y + h}v${-(h - r)}a${r},${r} 0 0 1 ${r},${-r}h${w - 2 * r}a${r},${r} 0 0 1 ${r},${r}v${h - r}z`; }
+  function niceCeil(v) { const p = Math.pow(10, Math.floor(Math.log10(v))); const m = v / p; const s = m <= 1 ? 1 : m <= 2 ? 2 : m <= 5 ? 5 : 10; return s * p; }
+  function esc(s) { return String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])); }
+
+  matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => data && render());
+  load();
+})();
+</script>
+</body>
+</html>

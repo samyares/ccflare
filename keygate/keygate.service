@@ -1,0 +1,15 @@
+[Unit]
+Description=keygate - per-user API keys in front of ccflare
+After=network-online.target ccflare.service
+Wants=ccflare.service
+
+[Service]
+Type=simple
+WorkingDirectory=/root/keygate
+EnvironmentFile=/root/keygate/.env
+ExecStart=/root/.bun/bin/bun run /root/keygate/gateway.ts
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target
