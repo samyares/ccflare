@@ -4,7 +4,7 @@ import type { JsonRecord } from "../../types";
 import { buildAnthropicTextBlock } from "../content-parts";
 import { textContentFromUnknown } from "../shared";
 
-const CLAUDE_CODE_VERSION = "2.1.63";
+const CLAUDE_CODE_VERSION = "2.1.251";
 const CLAUDE_CODE_FINGERPRINT_SALT = "59cf53e54c78";
 const CLAUDE_CODE_PROMPT = [
 	"You are Claude Code, Anthropic's official CLI for Claude.",

@@ -83,7 +83,15 @@ function buildUpstreamHeaders(
 	headers.set("accept", isStreaming ? "text/event-stream" : "application/json");
 	if (ANTHROPIC_PROVIDERS.has(providerName)) {
 		headers.set("anthropic-version", ANTHROPIC_VERSION);
-		headers.set("anthropic-beta", ANTHROPIC_BETA);
+		// Merge client-supplied betas (e.g. context-1m, context-management from Claude Code)
+		// with the fixed set required for Claude Code OAuth, de-duplicated.
+		const clientBeta = sourceHeaders.get("anthropic-beta") ?? "";
+		const merged = new Set(
+			[...ANTHROPIC_BETA.split(","), ...clientBeta.split(",")]
+				.map((b) => b.trim())
+				.filter(Boolean),
+		);
+		headers.set("anthropic-beta", [...merged].join(","));
 	}
 	return headers;
 }
