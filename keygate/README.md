@@ -16,7 +16,20 @@ for sharing one Claude subscription between a few people:
 - **Protected ccflare dashboard** on `ADMIN_PORT` behind HTTP Basic Auth (any user, password = `ADMIN_KEY`),
   so port 8080 can stay firewalled.
 
-## Install (Ubuntu, alongside ccflare)
+## Install (Ubuntu)
+
+Fresh box, as root:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/samyares/ccflare/main/keygate/install.sh | bash
+```
+
+`install.sh` installs packages, a 2 GB swapfile, Bun, clones this fork, builds, installs both systemd units, configures
+ufw (22/4000/8081 open, 8080 closed) and prints the generated admin key. It is idempotent: re-run it to update.
+Afterwards add a Claude account with `bun run ccflare --add-account work --provider claude-code` and create user keys
+in the dashboard (or copy `keys.json` from another host).
+
+### Manual steps (what the script does)
 
 ```bash
 mkdir -p /root/keygate && cp gateway.ts dashboard.html /root/keygate/
