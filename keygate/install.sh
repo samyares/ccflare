@@ -2,6 +2,7 @@
 # One-shot install of ccflare (this fork) + keygate on a fresh Ubuntu box. Run as root.
 #   curl -fsSL https://raw.githubusercontent.com/samyares/ccflare/main/keygate/install.sh | bash
 # Idempotent: safe to re-run to update code.
+# On a host that already runs other services, set SKIP_FIREWALL=1 (the ufw step resets all rules).
 set -euo pipefail
 REPO="${REPO:-https://github.com/samyares/ccflare.git}"
 CCFLARE_DIR=/root/ccflare
@@ -51,10 +52,15 @@ systemctl daemon-reload
 systemctl enable ccflare keygate >/dev/null 2>&1
 systemctl restart ccflare keygate
 
-echo "== firewall"
-ufw --force reset >/dev/null; ufw default deny incoming >/dev/null; ufw default allow outgoing >/dev/null
-ufw allow 22/tcp >/dev/null; ufw allow 4000/tcp >/dev/null; ufw allow 8081/tcp >/dev/null
-ufw --force enable >/dev/null
+if [ "${SKIP_FIREWALL:-0}" = 1 ]; then
+  echo "== firewall: skipped (SKIP_FIREWALL=1). Make sure port 8080 is not reachable from the internet."
+else
+  echo "== firewall (ufw): allow ssh/4000/8081, deny the rest"
+  SSH_PORT=$(sshd -T 2>/dev/null | awk '/^port /{print $2; exit}'); SSH_PORT=${SSH_PORT:-22}
+  ufw --force reset >/dev/null; ufw default deny incoming >/dev/null; ufw default allow outgoing >/dev/null
+  ufw allow "${SSH_PORT}/tcp" >/dev/null; ufw allow 4000/tcp >/dev/null; ufw allow 8081/tcp >/dev/null
+  ufw --force enable >/dev/null
+fi
 
 sleep 4
 echo "== health"
