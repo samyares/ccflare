@@ -148,6 +148,8 @@ export default function startServer(
 	// Main server
 	serverInstance = serve({
 		port: runtimeConfig.port,
+		// HOST lets deployments bind to 127.0.0.1 when a gateway sits in front (default: all interfaces).
+		hostname: process.env.HOST || undefined,
 		idleTimeout: NETWORK.IDLE_TIMEOUT_MAX, // Max allowed by Bun
 		fetch(req, server) {
 			return fetchHandler(req, server);
