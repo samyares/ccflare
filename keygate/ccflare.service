@@ -10,6 +10,9 @@ WorkingDirectory=/root/ccflare
 Environment=PATH=/root/.bun/bin:/usr/local/bin:/usr/bin:/bin
 Environment=PORT=8080
 Environment=LOG_LEVEL=INFO
+# keep stored request/response payloads small; a few days of Claude Code traffic otherwise reaches GBs
+Environment=CF_MAX_PAYLOAD_BYTES=524288
+Environment=DATA_RETENTION_DAYS=7
 ExecStart=/root/.bun/bin/bun run apps/server/src/server.ts
 Restart=always
 RestartSec=3
