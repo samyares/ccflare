@@ -114,13 +114,17 @@ function ensureRequestLinkageColumns(db: Database): void {
 	}
 }
 
+// Runs once: after the first pass every row has a response_chain_id. Checking client_session_id
+// here (as upstream does) re-runs the full scan on every start, since requests made without a
+// session header legitimately keep NULL there; with a large request_payloads table that scan
+// loads every payload into memory and can exhaust a small host.
 function backfillRequestLinkageColumns(db: Database): void {
 	const missingCount = db
 		.query(
 			`
 				SELECT COUNT(*) AS count
 				FROM requests
-				WHERE response_chain_id IS NULL OR client_session_id IS NULL
+				WHERE response_chain_id IS NULL
 			`,
 		)
 		.get() as { count: number } | null;
